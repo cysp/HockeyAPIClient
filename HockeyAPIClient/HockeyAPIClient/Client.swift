@@ -14,12 +14,16 @@ open class Client {
         public var host: String = "rink.hockeyapp.net"
         public var apiVersion: UInt = 2
         public var token: String
+
+        public init(token: String) {
+            self.token = token
+        }
     }
 
 
     internal let options: Options
 
-    init(_ options: Options) {
+    public init(_ options: Options) {
         self.options = options
 
         let sessionConfiguration = URLSessionConfiguration.default
@@ -33,6 +37,7 @@ open class Client {
     internal enum Endpoint {
         case applications
         case applicationVersions(applicationIdentifier: String)
+        case applicationVersionSources(applicationIdentifier: String, versionIdentifier: String)
     }
     internal func url(_ endpoint: Endpoint) -> URL {
         var c = URLComponents()
@@ -48,7 +53,15 @@ open class Client {
         case let .applicationVersions(applicationIdentifier):
             var url = baseURL.appendingPathComponent("apps", isDirectory: true)
             url.appendPathComponent(applicationIdentifier, isDirectory: true)
-            return url.appendingPathComponent("app_versions", isDirectory: false)
+            url.appendPathComponent("app_versions", isDirectory: false)
+            return url
+        case let .applicationVersionSources(applicationIdentifier, versionIdentifier):
+            var url = baseURL.appendingPathComponent("apps", isDirectory: true)
+            url.appendPathComponent(applicationIdentifier, isDirectory: true)
+            url.appendPathComponent("app_versions", isDirectory: true)
+            url.appendPathComponent(versionIdentifier, isDirectory: true)
+            url.appendPathComponent("app_sources", isDirectory: false)
+            return url
         }
     }
 
@@ -57,7 +70,9 @@ open class Client {
         case unknown
     }
     internal func enqueuedRequest(url: URL, completion: @escaping ((Result<[String: Any], RequestError>) -> Void)) -> URLSessionTaskAutoCancellable {
-        let task: URLSessionDataTask = session.dataTask(with: url, completionHandler: { (data, res, error) in
+        var req = URLRequest(url: url)
+        req.addValue(options.token, forHTTPHeaderField: "X-HockeyAppToken")
+        let task: URLSessionDataTask = session.dataTask(with: req, completionHandler: { (data, res, error) in
             if error != nil {
                 return completion(.error(.unknown))
             }
@@ -112,11 +127,11 @@ open class Client {
     public enum ApplicationVersionsRequestError: Error {
         case unknown
     }
-    public func requestApplicationVersions(application: Application, completion: @escaping (Result<[ApplicationVersion], ApplicationVersionsRequestError>) -> Void) -> AutoCancellable {
-        return self.requestApplicationVersions(applicationIdentifier: application.publicIdentifier, completion: completion)
+    public func requestApplicationVersions(for application: Application, completion: @escaping (Result<[ApplicationVersion], ApplicationVersionsRequestError>) -> Void) -> AutoCancellable {
+        return self.requestApplicationVersions(for: application.publicIdentifier, completion: completion)
     }
-    public func requestApplicationVersions(applicationIdentifier: String, completion: @escaping (Result<[ApplicationVersion], ApplicationVersionsRequestError>) -> Void) -> AutoCancellable {
-        return enqueuedRequest(url: url(.applications), completion: { result in
+    public func requestApplicationVersions(for applicationIdentifier: String, completion: @escaping (Result<[ApplicationVersion], ApplicationVersionsRequestError>) -> Void) -> AutoCancellable {
+        return enqueuedRequest(url: url(.applicationVersions(applicationIdentifier: applicationIdentifier)), completion: { result in
             switch result {
             case .error(_):
                 return completion(.error(.unknown))
@@ -124,10 +139,33 @@ open class Client {
                 guard let applicationVersionDicts = dict["app_versions"] as? [[String: Any]] else {
                     return completion(.error(.unknown))
                 }
-                let applicationVersions = applicationVersionDicts.flatMap { try? ApplicationVersion(dict: $0) }
+                let applicationVersions = applicationVersionDicts.flatMap{ try? ApplicationVersion(dict: $0) }
                 return completion(.ok(applicationVersions))
             }
         })
     }
 
+
+    public enum ApplicationVersionSourcesRequestError: Error {
+        case unknown
+    }
+    public func requestApplicationVersionSources(for applicationAndVersion: (Application, ApplicationVersion), completion: @escaping (Result<ApplicationSource, ApplicationVersionSourcesRequestError>) -> Void) -> AutoCancellable {
+        return requestApplicationVersionSources(for: (applicationAndVersion.0.publicIdentifier, applicationAndVersion.1.version), completion: completion)
+    }
+    public func requestApplicationVersionSources(for applicationAndVersionIdentifiers: (String, String), completion: @escaping (Result<ApplicationSource, ApplicationVersionSourcesRequestError>) -> Void) -> AutoCancellable {
+        return enqueuedRequest(url: url(.applicationVersionSources(applicationIdentifier: applicationAndVersionIdentifiers.0, versionIdentifier: applicationAndVersionIdentifiers.1)), completion: { result in
+            switch result {
+            case .error(_):
+                return completion(.error(.unknown))
+            case let .ok(dict):
+                guard let applicationSourceDicts = dict["app_sources"] as? [[String: Any]] else {
+                    return completion(.error(.unknown))
+                }
+                guard let applicationSources = applicationSourceDicts.flatMap({ try? ApplicationSource(dict: $0) }).first else {
+                    return completion(.error(.unknown))
+                }
+                return completion(.ok(applicationSources))
+            }
+        })
+    }
 }

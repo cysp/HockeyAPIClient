@@ -2,6 +2,12 @@
 <Workspace
    version = "1.0">
    <FileRef
+      location = "group:Playground.playground">
+   </FileRef>
+   <FileRef
+      location = "group:hockeyapp-most-recent-version-commit-sha/hockeyapp-most-recent-version-commit-sha.xcodeproj">
+   </FileRef>
+   <FileRef
       location = "group:HockeyAPIClient/HockeyAPIClient.xcodeproj">
    </FileRef>
 </Workspace>

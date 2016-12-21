@@ -16,6 +16,7 @@
 		2CD95A611DDB051B003D0D85 /* Application.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CD95A601DDB051B003D0D85 /* Application.swift */; };
 		2CD95A631DDB07C5003D0D85 /* Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CD95A621DDB07C5003D0D85 /* Result.swift */; };
 		2CD95A651DDB0B93003D0D85 /* ApplicationVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CD95A641DDB0B93003D0D85 /* ApplicationVersion.swift */; };
+		2CD95A9A1DDB2ACA003D0D85 /* ApplicationSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CD95A991DDB2ACA003D0D85 /* ApplicationSource.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -41,6 +42,7 @@
 		2CD95A601DDB051B003D0D85 /* Application.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Application.swift; sourceTree = "<group>"; };
 		2CD95A621DDB07C5003D0D85 /* Result.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Result.swift; sourceTree = "<group>"; };
 		2CD95A641DDB0B93003D0D85 /* ApplicationVersion.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ApplicationVersion.swift; sourceTree = "<group>"; };
+		2CD95A991DDB2ACA003D0D85 /* ApplicationSource.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ApplicationSource.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,6 +93,7 @@
 				2C4AB7B91DD91B1F00756AB9 /* Client.swift */,
 				2CD95A601DDB051B003D0D85 /* Application.swift */,
 				2CD95A641DDB0B93003D0D85 /* ApplicationVersion.swift */,
+				2CD95A991DDB2ACA003D0D85 /* ApplicationSource.swift */,
 			);
 			path = HockeyAPIClient;
 			sourceTree = "<group>";
@@ -220,6 +223,7 @@
 				2CD95A5F1DDB0254003D0D85 /* Cancellable.swift in Sources */,
 				2C4AB7BA1DD91B1F00756AB9 /* Client.swift in Sources */,
 				2CD95A5D1DDB0236003D0D85 /* URLSessionTaskAutoCancellable.swift in Sources */,
+				2CD95A9A1DDB2ACA003D0D85 /* ApplicationSource.swift in Sources */,
 				2CD95A651DDB0B93003D0D85 /* ApplicationVersion.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
