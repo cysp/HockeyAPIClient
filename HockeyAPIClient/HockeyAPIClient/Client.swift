@@ -66,10 +66,11 @@ open class Client {
     }
 
 
-    internal enum RequestError: Error {
+    internal enum RequestError<M: HockeyAPIResponseModel>: Error {
         case unknown
+        case modelDataError(M.DataError)
     }
-    internal func enqueuedRequest(url: URL, completion: @escaping ((Result<[String: Any], RequestError>) -> Void)) -> URLSessionTaskAutoCancellable {
+    internal func enqueuedRequest<T: HockeyAPIResponseModel>(url: URL, completion: @escaping ((Result<T, RequestError<T>>) -> Void)) -> AutoCancellable {
         var req = URLRequest(url: url)
         req.addValue(options.token, forHTTPHeaderField: "X-HockeyAppToken")
         let task: URLSessionDataTask = session.dataTask(with: req, completionHandler: { (data, res, error) in
@@ -89,15 +90,24 @@ open class Client {
                 return completion(.error(.unknown))
             }
 
-            guard let object = try? JSONSerialization.jsonObject(with: data, options: []) else {
+            let model: T
+            do {
+                model = try HockeyAPIResponseParsing.parse(res: res, data: data)
+            } catch let error as T.DataError {
+                return completion(.error(.modelDataError(error)))
+            } catch {
                 return completion(.error(.unknown))
             }
+//
+//            guard let object = try? JSONSerialization.jsonObject(with: data, options: []) else {
+//                return completion(.error(.unknown))
+//            }
+//
+//            guard let dict = object as? [String: Any] else {
+//                return completion(.error(.unknown))
+//            }
 
-            guard let dict = object as? [String: Any] else {
-                return completion(.error(.unknown))
-            }
-
-            return completion(.ok(dict))
+            return completion(.ok(model))
         })
 
         task.resume()
@@ -109,16 +119,12 @@ open class Client {
         case unknown
     }
     public func requestApplications(completion: @escaping (Result<[Application], ApplicationsRequestError>) -> Void) -> AutoCancellable {
-        return enqueuedRequest(url: url(.applications), completion: { result in
+        return enqueuedRequest(url: url(.applications), completion: { (result: Result<HockeyAPIApplicationsResponseModel, RequestError<HockeyAPIApplicationsResponseModel>>) in
             switch result {
             case .error(_):
                 return completion(.error(.unknown))
-            case let .ok(dict):
-                guard let applicationDicts = dict["apps"] as? [[String: Any]] else {
-                    return completion(.error(.unknown))
-                }
-                let applications = applicationDicts.flatMap { try? Application(dict: $0) }
-                return completion(.ok(applications))
+            case let .ok(response):
+                return completion(.ok(response.apps))
             }
         })
     }
