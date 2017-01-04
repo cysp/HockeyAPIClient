@@ -3,11 +3,6 @@
 import Foundation
 
 
-public enum Result<T, E: Error> {
-    case ok(T)
-    case error(E)
-}
-
 open class Client {
 
     public struct Options {
@@ -66,16 +61,25 @@ open class Client {
     }
 
 
+    public enum Result<T, E: Error> {
+        case ok(T)
+        case error(E)
+    }
+
     internal enum RequestError<M: HockeyAPIResponseModel>: Error {
         case unknown
+        case networkError(Error)
+        case httpError(HTTPURLResponse)
         case modelDataError(M.DataError)
     }
-    internal func enqueuedRequest<T: HockeyAPIResponseModel>(url: URL, completion: @escaping ((Result<T, RequestError<T>>) -> Void)) -> AutoCancellable {
+    internal typealias RequestResult<T: HockeyAPIResponseModel> = Result<T, RequestError<T>>
+
+    internal func enqueuedRequest<T: HockeyAPIResponseModel>(url: URL, completion: @escaping ((RequestResult<T>) -> Void)) -> AutoCancellable {
         var req = URLRequest(url: url)
         req.addValue(options.token, forHTTPHeaderField: "X-HockeyAppToken")
         let task: URLSessionDataTask = session.dataTask(with: req, completionHandler: { (data, res, error) in
-            if error != nil {
-                return completion(.error(.unknown))
+            if let error = error {
+                return completion(.error(.networkError(error)))
             }
             guard let res = res as? HTTPURLResponse else {
                 return completion(.error(.unknown))
@@ -84,10 +88,7 @@ open class Client {
             case 200..<300:
                 break
             default:
-                return completion(.error(.unknown))
-            }
-            guard let data = data else {
-                return completion(.error(.unknown))
+                return completion(.error(.httpError(res)))
             }
 
             let model: T
@@ -119,7 +120,7 @@ open class Client {
         case unknown
     }
     public func requestApplications(completion: @escaping (Result<[Application], ApplicationsRequestError>) -> Void) -> AutoCancellable {
-        return enqueuedRequest(url: url(.applications), completion: { (result: Result<HockeyAPIApplicationsResponseModel, RequestError<HockeyAPIApplicationsResponseModel>>) in
+        return enqueuedRequest(url: url(.applications), completion: { (result: RequestResult<HockeyAPIApplicationsResponseModel>) in
             switch result {
             case .error(_):
                 return completion(.error(.unknown))
@@ -137,16 +138,12 @@ open class Client {
         return self.requestApplicationVersions(for: application.publicIdentifier, completion: completion)
     }
     public func requestApplicationVersions(for applicationIdentifier: String, completion: @escaping (Result<[ApplicationVersion], ApplicationVersionsRequestError>) -> Void) -> AutoCancellable {
-        return enqueuedRequest(url: url(.applicationVersions(applicationIdentifier: applicationIdentifier)), completion: { result in
+        return enqueuedRequest(url: url(.applicationVersions(applicationIdentifier: applicationIdentifier)), completion: { (result: RequestResult<HockeyAPIApplicationVersionsResponseModel>) in
             switch result {
             case .error(_):
                 return completion(.error(.unknown))
-            case let .ok(dict):
-                guard let applicationVersionDicts = dict["app_versions"] as? [[String: Any]] else {
-                    return completion(.error(.unknown))
-                }
-                let applicationVersions = applicationVersionDicts.flatMap{ try? ApplicationVersion(dict: $0) }
-                return completion(.ok(applicationVersions))
+            case let .ok(response):
+                return completion(.ok(response.app_versions))
             }
         })
     }
@@ -155,22 +152,16 @@ open class Client {
     public enum ApplicationVersionSourcesRequestError: Error {
         case unknown
     }
-    public func requestApplicationVersionSources(for applicationAndVersion: (Application, ApplicationVersion), completion: @escaping (Result<ApplicationSource, ApplicationVersionSourcesRequestError>) -> Void) -> AutoCancellable {
+    public func requestApplicationVersionSources(for applicationAndVersion: (Application, ApplicationVersion), completion: @escaping (Result<[ApplicationSource], ApplicationVersionSourcesRequestError>) -> Void) -> AutoCancellable {
         return requestApplicationVersionSources(for: (applicationAndVersion.0.publicIdentifier, applicationAndVersion.1.version), completion: completion)
     }
-    public func requestApplicationVersionSources(for applicationAndVersionIdentifiers: (String, String), completion: @escaping (Result<ApplicationSource, ApplicationVersionSourcesRequestError>) -> Void) -> AutoCancellable {
-        return enqueuedRequest(url: url(.applicationVersionSources(applicationIdentifier: applicationAndVersionIdentifiers.0, versionIdentifier: applicationAndVersionIdentifiers.1)), completion: { result in
+    public func requestApplicationVersionSources(for applicationAndVersionIdentifiers: (String, String), completion: @escaping (Result<[ApplicationSource], ApplicationVersionSourcesRequestError>) -> Void) -> AutoCancellable {
+        return enqueuedRequest(url: url(.applicationVersionSources(applicationIdentifier: applicationAndVersionIdentifiers.0, versionIdentifier: applicationAndVersionIdentifiers.1)), completion: { (result: RequestResult<HockeyAPIApplicationSourcesResponseModel>) in
             switch result {
             case .error(_):
                 return completion(.error(.unknown))
-            case let .ok(dict):
-                guard let applicationSourceDicts = dict["app_sources"] as? [[String: Any]] else {
-                    return completion(.error(.unknown))
-                }
-                guard let applicationSources = applicationSourceDicts.flatMap({ try? ApplicationSource(dict: $0) }).first else {
-                    return completion(.error(.unknown))
-                }
-                return completion(.ok(applicationSources))
+            case let .ok(response):
+                return completion(.ok(response.app_sources))
             }
         })
     }

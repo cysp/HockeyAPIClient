@@ -16,11 +16,16 @@ internal struct HockeyAPIResponseParsing {
         case modelDecodingError(T)
     }
 
-    static func parse<Model: HockeyAPIResponseModel>(res: HTTPURLResponse, data: Data) throws -> Model {
+    static func parse<Model: HockeyAPIResponseModel>(res: HTTPURLResponse, data: Data?) throws -> Model {
         typealias Error = HockeyAPIResponseParsing.Error<Model.DataError>
 
-        let object = try? JSONSerialization.jsonObject(with: data, options: [])
-        let dict = object as? [String: Any]
+        let dict: [String: Any]?
+        if let data = data {
+            let object = try? JSONSerialization.jsonObject(with: data, options: [])
+            dict = object as? [String: Any]
+        } else {
+            dict = nil
+        }
 
         let model: Model
         do {

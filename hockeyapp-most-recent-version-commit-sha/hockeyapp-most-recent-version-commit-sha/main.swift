@@ -15,8 +15,8 @@ func requestMostRecentExtantCommitSha(client: Client, applicationId: String, ver
             switch result {
             case .error(_):
                 return dothething_(client: client, applicationId: applicationId, versions: versions, completion: completion)
-            case let .ok(source):
-                guard let commitSHA = source.commitSHA else {
+            case let .ok(sources):
+                guard let commitSHA = sources.first?.commitSHA else {
                     return dothething_(client: client, applicationId: applicationId, versions: versions, completion: completion)
                 }
                 return completion(commitSHA)
